@@ -9,6 +9,7 @@ import { OrchestrationMailboxDeliveryTarget } from '../../../../orchestration/ma
 import { OrchestrationMailboxOwner } from '../../../../orchestration/mailbox-owner'
 import { OrchestrationMailboxPointerDelivery } from '../../../../orchestration/mailbox-pointer-delivery'
 import { WRITE_ACCEPTED } from '../../../../../../shared/pty-write-settlement'
+import { formatMessagePointer } from '../../../../orchestration/formatter'
 
 describe('orchestration RPC methods', () => {
   const h = createOrchestrationRpcHarness()
@@ -56,28 +57,28 @@ describe('orchestration RPC methods', () => {
       filesModified?: string[]
       senderPaneKey?: string
     }): void {
-      const payload: Record<string, unknown> = {}
+      const payload: Record<string, unknown> = { outcome: 'succeeded' }
       if (params.taskId !== undefined) {
         payload.taskId = params.taskId
       }
       if (params.dispatchId !== undefined) {
         payload.dispatchId = params.dispatchId
       }
-      payload.outcome = 'succeeded'
       if (params.filesModified !== undefined) {
         payload.filesModified = params.filesModified
       }
-
-      const message = db.insertMessage({
-        from: params.from ?? 'term_worker',
-        to: params.to ?? `run:${activeRunId}`,
-        subject: 'Done',
-        type: 'worker_done',
-        payload: JSON.stringify(payload),
-        senderPaneKey: params.senderPaneKey,
-        runId: activeRunId
-      })
-      reconcileLifecycleMessage(db, message)
+      reconcileLifecycleMessage(
+        db,
+        db.insertMessage({
+          from: params.from ?? 'term_worker',
+          to: params.to ?? `run:${activeRunId}`,
+          subject: 'Done',
+          type: 'worker_done',
+          payload: JSON.stringify(payload),
+          senderPaneKey: params.senderPaneKey,
+          runId: activeRunId
+        })
+      )
     }
 
     it('returns unread messages for a terminal', async () => {
@@ -857,19 +858,11 @@ describe('orchestration RPC methods', () => {
         payload: JSON.stringify({ progress: 50 }),
         runId: activeRunId
       })
-      db.insertMessage({
-        from: 'someone',
-        to: 'term_other',
-        subject: 'Unrelated message'
-      })
-
-      const inbox = (await call('orchestration.inbox', {
-        terminal: 'term_coord'
-      })) as {
+      db.insertMessage({ from: 'someone', to: 'term_other', subject: 'Unrelated message' })
+      const inbox = (await call('orchestration.inbox', { terminal: 'term_coord' })) as {
         messages: { id: string; to_handle: string; type: string }[]
         count: number
       }
-
       expect(inbox.count).toBe(2)
       expect(inbox.messages.every((m) => m.to_handle === `run:${activeRunId}`)).toBe(true)
       expect(inbox.messages.map((m) => m.type)).toContain('worker_done')
@@ -880,7 +873,6 @@ describe('orchestration RPC methods', () => {
       setup(true)
       const task = db.createTask({ spec: 'subtask', runId: activeRunId })
       const dispatch = createRootDispatch(db, task.id, 'term_worker', 'tab_worker:leaf_worker')
-
       db.insertMessage({
         from: 'term_coord',
         to: `dispatch:${dispatch.id}`,
@@ -888,19 +880,11 @@ describe('orchestration RPC methods', () => {
         type: 'dispatch',
         runId: activeRunId
       })
-      db.insertMessage({
-        from: 'someone',
-        to: 'term_other',
-        subject: 'Other'
-      })
-
-      const inbox = (await call('orchestration.inbox', {
-        terminal: 'term_worker'
-      })) as {
+      db.insertMessage({ from: 'someone', to: 'term_other', subject: 'Other' })
+      const inbox = (await call('orchestration.inbox', { terminal: 'term_worker' })) as {
         messages: { id: string; to_handle: string }[]
         count: number
       }
-
       expect(inbox.count).toBe(1)
       expect(inbox.messages[0]?.to_handle).toBe(`dispatch:${dispatch.id}`)
     })
@@ -917,44 +901,38 @@ describe('orchestration RPC methods', () => {
           payload: JSON.stringify({ outcome: 'succeeded' }),
           runId: activeRunId
         })
-
-        const [tabId, leafId] = coordinatorPaneKey.split(':')
+        const [tabId = 'tab_coord', leafId = 'leaf_coord'] = coordinatorPaneKey.split(':')
         const leaf = {
-          tabId: tabId ?? 'tab_coord',
-          leafId: leafId ?? 'leaf_coord',
+          tabId,
+          leafId,
           ptyId: 'pty_coord',
           writable: true,
           lastAgentStatus: 'idle' as const,
           lastAgentStatusObservedLive: true,
           lastOscTitle: null
         }
-
         const deliveryTarget = new OrchestrationMailboxDeliveryTarget({
           getDb: () => db,
-          getTerminalHandleForPaneKey: (paneKey) =>
-            paneKey === coordinatorPaneKey ? 'term_coord' : null,
-          hasTerminalHandle: (handle) => handle === 'term_coord',
+          getTerminalHandleForPaneKey: (pk) => (pk === coordinatorPaneKey ? 'term_coord' : null),
+          hasTerminalHandle: (h) => h === 'term_coord',
           isStructuredWorkerHandle: () => false,
           canProbePtyLiveness: () => true,
           controllerKnowsPtyIsLive: () => true,
           isLeafPtyProvenAbsent: async () => false
         })
-
         const mailboxOwner = new OrchestrationMailboxOwner({
           getDb: () => db,
           getLeaf: () => leaf,
           getLeafKey: (t, l) => `${t}:${l}`,
-          getTerminalHandleForLeafKey: (leafKey) =>
-            leafKey === coordinatorPaneKey ? 'term_coord' : undefined,
+          getTerminalHandleForLeafKey: (lk) =>
+            lk === coordinatorPaneKey ? 'term_coord' : undefined,
           getTerminalProcessIncarnation: () => 'inc_1',
           onRoutedMessageTypes: vi.fn(),
           onForeignMailboxRouted: vi.fn()
         })
-
         expect(deliveryTarget.resolveTerminalHandle(`run:${activeRunId}`)).toBe('term_coord')
         expect(mailboxOwner.resolve(leaf, `run:${activeRunId}`)).toBe(`run:${activeRunId}`)
         expect(mailboxOwner.resolve(leaf)).toBe(`run:${activeRunId}`)
-
         const writes: string[] = []
         const pointerDelivery = new OrchestrationMailboxPointerDelivery({
           deliveryTarget,
@@ -963,8 +941,8 @@ describe('orchestration RPC methods', () => {
           getLeaf: () => leaf,
           getLiveLeafForHandle: () => leaf,
           getLeafKey: (t, l) => `${t}:${l}`,
-          getTerminalHandleForLeafKey: (leafKey) =>
-            leafKey === coordinatorPaneKey ? 'term_coord' : undefined,
+          getTerminalHandleForLeafKey: (lk) =>
+            lk === coordinatorPaneKey ? 'term_coord' : undefined,
           getMessageWaiters: () => undefined,
           getTabTitle: () => 'coordinator',
           getCliCommand: () => 'orca' as const,
@@ -980,14 +958,14 @@ describe('orchestration RPC methods', () => {
             return WRITE_ACCEPTED
           }
         })
-
         pointerDelivery.deliverForHandle(`run:${activeRunId}`)
         await vi.advanceTimersByTimeAsync(1000)
         const delivered = db.getMessageById(message.id)
         expect(delivered?.delivered_at).not.toBeNull()
+        expect(writes).toEqual([formatMessagePointer(1, `run:${activeRunId}`), '\r'])
       } finally {
         vi.useRealTimers()
       }
     })
-})
+  })
 })
