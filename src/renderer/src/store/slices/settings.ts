@@ -28,6 +28,7 @@ import {
   normalizeMobilePairingCustomAddress,
   normalizeMobilePairingCustomAddresses
 } from '../../../../shared/mobile-pairing-custom-address'
+import { applyChatSettingsNormalizations } from '../../../../shared/chat-appearance-settings'
 import {
   hydrateOwnerWorktreeVisibilityDefaults,
   type WorktreeVisibilityDefaultsByHost
@@ -129,6 +130,7 @@ function normalizeSettingsUpdates(
       updates.mobilePairingCustomAddresses
     )
   }
+  applyChatSettingsNormalizations(updates, sanitizedUpdates)
   return sanitizedUpdates
 }
 

@@ -25,6 +25,16 @@ Toggle Chat UI ↔ terminal from the agent pane once enabled.
 
 When Claude shows an **AskUserQuestion** (or similar structured permission/question card), Chat UI should render the question card in the transcript so you can answer from the composer path instead of treating it as a collapsed tool call. Confirm with **Submit** on the card. That includes agents running on a paired [Remote Orca Server](/docs/remote-servers) / headless host — not only local panes.
 
+## Appearance
+
+Customize Chat UI typography and colors under **Settings → Appearance → Chat**:
+
+- **Chat Theme**: Choose between **Default** (follows your application theme) or **Match Terminal** (uses your active terminal background, foreground, and surface colors).
+- **Font Family**: Set a custom typeface for chat messages and composer text. Leave empty to use the interface font.
+- **Font Size**: Adjust the base chat font size (10px to 24px, default 13px). Message text, timestamps, and badges scale proportionally.
+- **Line Height**: Control line spacing multiplier (1.0 to 3.0, default 1.4).
+- **Monospace Font**: Set a dedicated monospace font for code blocks and inline code snippets. Leave empty to follow your configured terminal font.
+
 ## Availability
 
 Chat UI ships on desktop for supported local and remote (paired server) agent sessions. The [mobile companion](/docs/mobile) reuses chat-style transcript patterns for the same paired sessions.

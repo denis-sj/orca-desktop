@@ -202,10 +202,14 @@ export const getAppIconEntries = createLocalizedCatalog((): SettingsSearchEntry[
     ]
   }
 ])
+export { getChatAppearanceSearchEntries } from './appearance-chat-search'
 
 const getAppearanceSectionEntries = createLocalizedCatalog((): SettingsSearchEntry[] => [
   {
     title: translate('auto.components.settings.AppearancePane.interfaceTitle', 'Interface')
+  },
+  {
+    title: translate('auto.components.settings.AppearancePane.chatTitle', 'Chat')
   },
   {
     title: translate('auto.components.settings.AppearancePane.terminalTitle', 'Terminal')
@@ -237,6 +241,7 @@ function buildAppearancePaneSearchEntries(
     ...(SHOW_UI_LANGUAGE_SETTING ? getLanguageEntries() : []),
     ...getTypographyEntries(),
     ...getZoomEntries(),
+    ...getChatAppearanceSearchEntries(),
     ...getTerminalAppearanceSearchEntries(options),
     ...getLayoutEntries(),
     ...getTitlebarEntries(),

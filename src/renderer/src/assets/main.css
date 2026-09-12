@@ -3030,3 +3030,30 @@ html.native-shell .app-layout {
     inset 0 1px 0 0 color-mix(in srgb, var(--foreground) 5%, transparent),
     0 10px 24px rgba(0, 0, 0, 0.18);
 }
+
+.native-chat-surface {
+  font-family: var(--chat-font-family, var(--app-font-family));
+  font-size: var(--chat-font-size, 13px);
+  line-height: var(--chat-line-height, 1.4);
+}
+.native-chat-surface .text-sm,
+.native-chat-surface .text-\[13px\] {
+  font-size: var(--chat-font-size, 13px);
+}
+.native-chat-surface .text-xs {
+  font-size: calc(var(--chat-font-size, 13px) * 0.86);
+}
+.native-chat-surface .text-\[11px\] {
+  font-size: calc(var(--chat-font-size, 13px) * 0.85);
+}
+.native-chat-surface .text-\[10px\] {
+  font-size: calc(var(--chat-font-size, 13px) * 0.77);
+}
+.native-chat-surface .leading-relaxed {
+  line-height: var(--chat-line-height, 1.4);
+}
+.native-chat-surface code,
+.native-chat-surface pre,
+.native-chat-surface .font-mono {
+  font-family: var(--font-mono);
+}

@@ -2,16 +2,23 @@ import { NativeChatSessionGate } from './NativeChatSessionGate'
 import { NativeChatStructuredSession } from './NativeChatStructuredSession'
 import { NativeChatResolvedView } from './NativeChatResolvedView'
 import { useNativeChatStatusEntry } from './use-native-chat-status-entry'
+import { useNativeChatAppearanceStyle } from './use-native-chat-appearance-style'
 import type { NativeChatViewProps } from './native-chat-view-types'
 
 export type { NativeChatViewProps } from './native-chat-view-types'
 
 /** Resolves an agent terminal into its native conversation and composer UI. */
 export default function NativeChatView(props: NativeChatViewProps): React.JSX.Element {
-  if (props.mode === 'structured') {
-    return <NativeChatStructuredSession key={props.sessionId} {...props} />
-  }
-  return <NativeChatBridgeView {...props} />
+  const appearanceStyle = useNativeChatAppearanceStyle()
+  return (
+    <div className="h-full w-full min-h-0 native-chat-surface" style={appearanceStyle}>
+      {props.mode === 'structured' ? (
+        <NativeChatStructuredSession key={props.sessionId} {...props} />
+      ) : (
+        <NativeChatBridgeView {...props} />
+      )}
+    </div>
+  )
 }
 
 function NativeChatBridgeView({

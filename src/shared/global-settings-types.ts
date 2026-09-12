@@ -29,6 +29,7 @@ import type {
   AgentDashboardMode,
   BranchPrefixStrategy,
   FloatingTerminalTriggerLocation,
+  ChatAppearanceMode,
   LeftSidebarAppearanceMode,
   OpenInApplication,
   SourceControlGroupOrder,
@@ -84,6 +85,11 @@ export type GlobalSettings = {
   uiLanguage: UiLanguage
   appIcon: AppIconId
   appFontFamily: string
+  chatAppearanceMode?: ChatAppearanceMode
+  chatFontFamily?: string
+  chatFontSize?: number
+  chatLineHeight?: number
+  chatFontMono?: string
   editorAutoSave: boolean
   editorAutoSaveDelayMs: number
   editorMinimapEnabled: boolean

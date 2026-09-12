@@ -1,18 +1,20 @@
 import type React from 'react'
 import { useLayoutEffect, useState } from 'react'
-import { AppWindow, PanelLeft, TerminalSquare } from 'lucide-react'
+import { AppWindow, MessageSquare, PanelLeft, TerminalSquare } from 'lucide-react'
 
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 
 import { AppearanceSection } from './AppearanceSection'
 import { AppearanceInterfaceSection } from './AppearanceInterfaceSection'
 import { AppearanceWindowSidebarSection } from './AppearanceWindowSidebarSection'
+import { ChatAppearanceSection } from './ChatAppearanceSection'
 import { SearchableSetting } from './SearchableSetting'
 import { matchesSettingsSearch, normalizeSettingsSearchQuery } from './settings-search'
 import { useAppStore } from '../../store'
 import { USAGE_PERCENTAGE_DISPLAY_SETTING_ID } from './appearance-usage-percentage-search'
 import {
   getAppIconEntries,
+  getChatAppearanceSearchEntries,
   getAppearancePaneSearchEntries,
   getLanguageEntries,
   getLayoutEntries,
@@ -54,10 +56,11 @@ type AppearancePaneProps = {
   warpThemes: UseWarpThemeImportReturn
 }
 
-type AppearanceSectionKey = 'interface' | 'terminal' | 'window'
+type AppearanceSectionKey = 'interface' | 'chat' | 'terminal' | 'window'
 
 const ALL_APPEARANCE_SECTIONS = [
   'interface',
+  'chat',
   'terminal',
   'window'
 ] as const satisfies readonly AppearanceSectionKey[]
@@ -121,6 +124,7 @@ export function AppearancePane({
     'auto.components.settings.AppearancePane.interfaceTitle',
     'Interface'
   )
+  const chatTitle = translate('auto.components.settings.AppearancePane.chatTitle', 'Chat')
   const terminalTitle = translate(
     'auto.components.settings.AppearancePane.terminalTitle',
     'Terminal'
@@ -145,6 +149,7 @@ export function AppearancePane({
     ...getSystemTrayEntries({ showSystemTray: isDesktopWindows }),
     ...getMenuBarIconEntries({ showMenuBarIcon: isDesktopMac })
   ]
+  const chatSearchEntries = [{ title: chatTitle }, ...getChatAppearanceSearchEntries()]
   const terminalSearchEntries = [
     { title: terminalTitle },
     ...getTerminalAppearanceSearchEntries({ showWarpImport: !isWebClient })
@@ -162,6 +167,8 @@ export function AppearancePane({
   ]
 
   const interfaceMatches = matchesSettingsSearch(searchQuery, interfaceSearchEntries)
+  const chatMatches = matchesSettingsSearch(searchQuery, chatSearchEntries)
+  const chatLabelMatches = matchesSettingsSearch(searchQuery, { title: chatTitle })
   const terminalMatches = matchesSettingsSearch(searchQuery, terminalSearchEntries)
   const windowMatches = matchesSettingsSearch(searchQuery, windowSearchEntries)
   const interfaceLabelMatches = matchesSettingsSearch(searchQuery, { title: interfaceTitle })
@@ -179,9 +186,11 @@ export function AppearancePane({
     if (isSearching) {
       return key === 'interface'
         ? interfaceMatches
-        : key === 'terminal'
-          ? terminalMatches
-          : windowMatches
+        : key === 'chat'
+          ? chatMatches
+          : key === 'terminal'
+            ? terminalMatches
+            : windowMatches
     }
     return openSections.has(key)
   }
@@ -203,6 +212,15 @@ export function AppearancePane({
     settings.terminalFontFamily ||
     translate('auto.components.settings.AppearancePane.terminalDefaultFont', 'Default font')
   } · ${settings.terminalFontSize}px`
+  const chatFont =
+    settings.chatFontFamily ||
+    translate('auto.components.settings.AppearancePane.chatDefaultFont', 'Default font')
+  const chatSize = `${settings.chatFontSize ?? 13}px`
+  const chatMode =
+    settings.chatAppearanceMode === 'match-terminal'
+      ? translate('auto.components.settings.AppearancePane.chatMatchTerminalMode', 'Match Terminal')
+      : translate('auto.components.settings.AppearancePane.chatDefaultMode', 'Default')
+  const chatSummary = `${chatFont} · ${chatSize} · ${chatMode}`
 
   return (
     <div className="space-y-2.5">
@@ -225,6 +243,26 @@ export function AppearancePane({
             isDesktopMac={isDesktopMac}
             isDesktopWindows={isDesktopWindows}
             forceVisiblePrimary={interfaceLabelMatches}
+          />
+        </AppearanceSection>
+      ) : null}
+      {chatMatches ? (
+        <AppearanceSection
+          id="chat"
+          icon={<MessageSquare aria-hidden="true" />}
+          title={chatTitle}
+          summary={chatSummary}
+          open={isSectionOpen('chat')}
+          onToggle={() => toggleSection('chat')}
+          toggleDisabled={isSearching}
+        >
+          <ChatAppearanceSection
+            settings={settings}
+            updateSettings={updateSettings}
+            fontSuggestions={fontSuggestions}
+            terminalFontSuggestions={terminalFontSuggestions}
+            onRequestFontSuggestions={onRequestFontSuggestions}
+            forceVisiblePrimary={chatLabelMatches}
           />
         </AppearanceSection>
       ) : null}

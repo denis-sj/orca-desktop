@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => ({
     setUsagePercentageDisplay: vi.fn(),
     recordFeatureInteraction: vi.fn(),
     setWorktreeCardMode: vi.fn(),
-    appearanceAccordionDeepLink: null as 'interface' | 'terminal' | 'window' | null,
+    appearanceAccordionDeepLink: null as 'interface' | 'chat' | 'terminal' | 'window' | null,
     clearAppearanceAccordionDeepLink: vi.fn()
   }
 }))
@@ -46,6 +46,9 @@ vi.mock('../status-bar/use-available-status-bar-toggles', () => ({
 
 vi.mock('./TerminalAppearanceSection', () => ({
   TerminalAppearanceSection: () => null
+}))
+vi.mock('./ChatAppearanceSection', () => ({
+  ChatAppearanceSection: () => null
 }))
 
 vi.mock('../ui/select', async () => {
@@ -198,7 +201,7 @@ async function rerenderAppearancePane(
 
 function appearanceSectionToggle(
   container: HTMLElement,
-  sectionId: 'interface' | 'terminal' | 'window'
+  sectionId: 'interface' | 'chat' | 'terminal' | 'window'
 ): HTMLButtonElement | undefined {
   return Array.from(container.querySelectorAll<HTMLButtonElement>('button[aria-expanded]')).find(
     (button) => button.getAttribute('aria-controls') === `appearance-section-${sectionId}`
@@ -578,7 +581,7 @@ describe('AppearancePane', () => {
     expect(mocks.state.toggleStatusBarItem).toHaveBeenCalledWith('antigravity')
   })
 
-  it('expands Interface, Terminal, and Window & Sidebar by default', async () => {
+  it('expands Interface, Chat, Terminal, and Window & Sidebar by default', async () => {
     mocks.state.settingsSearchQuery = ''
     const container = await renderAppearancePane(getDefaultSettings('/tmp'))
 
@@ -586,8 +589,9 @@ describe('AppearancePane', () => {
       container.querySelectorAll<HTMLButtonElement>('button[aria-expanded="true"]')
     ).filter((button) => button.getAttribute('aria-controls')?.startsWith('appearance-section-'))
 
-    expect(expanded).toHaveLength(3)
+    expect(expanded).toHaveLength(4)
     expect(expanded.map((button) => button.textContent).join(' ')).toContain('Interface')
+    expect(expanded.map((button) => button.textContent).join(' ')).toContain('Chat')
     expect(expanded.map((button) => button.textContent).join(' ')).toContain('Terminal')
     expect(expanded.map((button) => button.textContent).join(' ')).toContain('Window & Sidebar')
   })
@@ -610,11 +614,33 @@ describe('AppearancePane', () => {
       container.querySelectorAll<HTMLButtonElement>('button[aria-expanded="true"]')
     ).filter((button) => button.getAttribute('aria-controls')?.startsWith('appearance-section-'))
 
-    expect(stillExpanded).toHaveLength(2)
+    expect(stillExpanded).toHaveLength(3)
     expect(stillExpanded.map((button) => button.textContent).join(' ')).toContain('Interface')
+    expect(stillExpanded.map((button) => button.textContent).join(' ')).toContain('Chat')
     expect(stillExpanded.map((button) => button.textContent).join(' ')).toContain(
       'Window & Sidebar'
     )
+  })
+
+  it('renders the chat section with summary and toggles independently', async () => {
+    mocks.state.settingsSearchQuery = ''
+    const settings = {
+      ...getDefaultSettings('/tmp'),
+      chatFontFamily: 'Fira Sans',
+      chatFontSize: 15,
+      chatAppearanceMode: 'match-terminal'
+    } as GlobalSettings
+    const container = await renderAppearancePane(settings)
+
+    const chatToggle = appearanceSectionToggle(container, 'chat')
+    expect(chatToggle?.getAttribute('aria-expanded')).toBe('true')
+    expect(chatToggle?.textContent).toContain('Chat')
+
+    await act(async () => {
+      chatToggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(chatToggle?.getAttribute('aria-expanded')).toBe('false')
+    expect(chatToggle?.textContent).toContain('Fira Sans · 15px · Match Terminal')
   })
 
   it('re-opens a collapsed section for appearance deep links without collapsing siblings', async () => {

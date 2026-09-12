@@ -12,6 +12,7 @@ import { NativeChatMessageList } from './NativeChatMessageList'
 import { NativeChatQuestionCard } from './NativeChatQuestionCard'
 import { selectNativeChatViewState } from './native-chat-view-state'
 import { useNativeChatFontScale } from './use-native-chat-font-scale'
+import { useNativeChatAppearanceStyle } from './use-native-chat-appearance-style'
 import { LinkActionPopover } from '@/components/link-actions/LinkActionPopover'
 import { useNativeChatLinkActions } from './use-native-chat-link-actions'
 import { useNativeChatFileLinkContext } from './use-native-chat-file-link-context'
@@ -89,6 +90,7 @@ export function NativeChatStructuredSession(
   )
   const viewState = selectNativeChatViewState(session)
   const fontScale = useNativeChatFontScale(viewState.kind === 'ready')
+  const appearanceStyle = useNativeChatAppearanceStyle()
   const fileLinkContext = useNativeChatFileLinkContext(props.tabId)
   const imageRuntimeContext = useNativeChatImageRuntimeContext(props.tabId)
   const { onLinkClick, linkActionRequest, closeLinkActions } = useNativeChatLinkActions(
@@ -180,7 +182,8 @@ export function NativeChatStructuredSession(
       onKeyUpCapture={paneCommands.onSelectionCapture}
       onKeyDownCapture={paneCommands.onKeyDownCapture}
       onContextMenuCapture={paneCommands.onContextMenuCapture}
-      className="flex h-full min-h-0 w-full flex-col bg-background focus:outline-none"
+      className="flex h-full min-h-0 w-full flex-col bg-background focus:outline-none native-chat-surface"
+      style={appearanceStyle}
     >
       <div className="flex min-h-0 flex-1 flex-col">
         {viewState.kind === 'loading' ? (

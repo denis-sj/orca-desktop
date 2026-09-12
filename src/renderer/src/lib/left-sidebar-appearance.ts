@@ -89,7 +89,7 @@ function buildSurfaceVariables(args: {
   return vars
 }
 
-function resolveTerminalSurfaceVariables(
+export function resolveTerminalSurfaceVariables(
   settings: LeftSidebarAppearanceSettings,
   systemPrefersDark: boolean
 ): LeftSidebarStyleVariables {
