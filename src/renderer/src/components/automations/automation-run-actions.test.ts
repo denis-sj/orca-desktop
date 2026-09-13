@@ -9,6 +9,7 @@ import type { Automation, AutomationRun } from '../../../../shared/automations-t
 import type { FolderWorkspace } from '../../../../shared/folder-workspace-types'
 import type { ProjectGroup } from '../../../../shared/project-group-types'
 import type { Repo } from '../../../../shared/repo-types'
+import type { Project, ProjectHostSetup } from '../../../../shared/project-types'
 import type { Worktree } from '../../../../shared/worktree/types'
 import type { AutomationsPageActionContext } from './automations-page-action-context'
 import type { AutomationDispatchContext } from './automation-row-action-dispatch'
@@ -53,6 +54,39 @@ function makeRepo(overrides: Partial<Repo> = {}): Repo {
     addedAt: 1,
     path: '/workspace/repo-1',
     projectGroupId: null,
+    ...overrides
+  }
+}
+
+function makeProject(id: string, overrides: Partial<Project> = {}): Project {
+  return {
+    id,
+    displayName: id,
+    badgeColor: '#737373',
+    sourceRepoIds: [],
+    createdAt: 1,
+    updatedAt: 1,
+    ...overrides
+  }
+}
+
+function makeSetup(
+  id: string,
+  projectId: string,
+  repoId: string,
+  overrides: Partial<ProjectHostSetup> = {}
+): ProjectHostSetup {
+  return {
+    id,
+    projectId,
+    hostId: 'local',
+    repoId,
+    path: `/repo/${repoId}`,
+    displayName: repoId,
+    setupState: 'ready',
+    setupMethod: 'cloned',
+    createdAt: 1,
+    updatedAt: 1,
     ...overrides
   }
 }
@@ -212,7 +246,7 @@ describe('expandProjectFolderOnAutomationRun', () => {
     ])
   })
 
-  it('uncollapses project groups and repo key for git worktrees (#20113)', () => {
+  it('uncollapses project groups and synthetic project key for git worktrees (#20113)', () => {
     const repo = makeRepo({
       id: 'repo-1',
       displayName: 'Repo 1',
@@ -235,7 +269,41 @@ describe('expandProjectFolderOnAutomationRun', () => {
     expect(mocks.uncollapseSidebarGroups).toHaveBeenCalledWith([
       'project-group:group-root',
       'project-group:group-child',
-      'repo:repo-1',
+      'project:repo:repo-1',
+      'host:local'
+    ])
+  })
+
+  it('uncollapses project groups and project key for git worktrees when project setup exists (#20113, #20121)', () => {
+    const repo = makeRepo({
+      id: 'repo-1',
+      displayName: 'Repo 1',
+      projectGroupId: 'group-child'
+    })
+    const project = makeProject('proj-1', {
+      sourceRepoIds: ['repo-1']
+    })
+    const setup = makeSetup('setup-1', 'proj-1', 'repo-1')
+    const worktree: Worktree = makeWorktree('wt-1', {
+      displayName: 'Feature worktree'
+    })
+
+    mockStoreState = {
+      ...mockStoreState,
+      repos: [repo],
+      projects: [project],
+      projectHostSetups: [setup],
+      worktreesByRepo: { 'repo-1': [worktree] },
+      allWorktrees: () => [worktree],
+      groupBy: 'repo'
+    }
+
+    expandProjectFolderOnAutomationRun('wt-1')
+
+    expect(mocks.uncollapseSidebarGroups).toHaveBeenCalledWith([
+      'project-group:group-root',
+      'project-group:group-child',
+      'project:proj-1',
       'host:local'
     ])
   })

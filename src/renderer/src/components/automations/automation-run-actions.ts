@@ -7,6 +7,7 @@ import {
 import { getFolderWorkspaceRevealGroupKeys } from '../sidebar/worktree-list/navigation/folder-reveal'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
+import { getProjectHostSetupProjectionFromState } from '@/store/selectors'
 import { getAutomationTargetAvailability } from './automation-target-availability'
 import { runAutomationNowForTarget } from './automation-host-client'
 import { dispatchAutomationRunNow } from './automation-row-action-dispatch'
@@ -36,6 +37,10 @@ export function expandProjectFolderOnAutomationRun(
         : Object.values(store.worktreesByRepo ?? {}).flat()
     const repoMap = new Map((store.repos ?? []).map((r) => [r.id, r]))
     const defaultHostId = getSettingsFocusedExecutionHostId(store.settings)
+    const projection = getProjectHostSetupProjectionFromState(store)
+    const projectGrouping = projection
+      ? { projects: projection.projects, projectHostSetups: projection.setups }
+      : undefined
 
     const keys = getFolderWorkspaceRevealGroupKeys(
       workspaceId,
@@ -49,7 +54,8 @@ export function expandProjectFolderOnAutomationRun(
         repoMap,
         executionHostId,
         prCache: store.prCache,
-        settings: store.settings
+        settings: store.settings,
+        projectGrouping
       }
     )
     if (keys.length > 0) {
