@@ -47,7 +47,9 @@ export function expandProjectFolderOnAutomationRun(
         defaultHostId,
         worktrees,
         repoMap,
-        executionHostId
+        executionHostId,
+        prCache: store.prCache,
+        settings: store.settings
       }
     )
     if (keys.length > 0) {

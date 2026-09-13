@@ -235,7 +235,8 @@ describe('expandProjectFolderOnAutomationRun', () => {
     expect(mocks.uncollapseSidebarGroups).toHaveBeenCalledWith([
       'project-group:group-root',
       'project-group:group-child',
-      'project:repo-1'
+      'repo:repo-1',
+      'host:local'
     ])
   })
 
