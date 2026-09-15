@@ -297,7 +297,7 @@ export function activateAndRevealWorktree(
   // 5. Clear sidebar filters hiding the target — reveal needs the card rendered, else it silently no-ops.
   if (opts?.clearSidebarFilters !== false) {
     if (state.filterRepoIds.length > 0 && !state.filterRepoIds.includes(wt.repoId)) {
-      state.setFilterRepoIds([])
+      state.setFilterRepoIds([...state.filterRepoIds, wt.repoId])
     }
     if (
       state.hideAutomationGeneratedWorkspaces &&

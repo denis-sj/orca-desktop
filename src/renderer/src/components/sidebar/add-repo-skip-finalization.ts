@@ -28,7 +28,7 @@ export function finalizeImportedRepoAfterSkip(
     state.setActiveRepo(importedRepoId)
   }
   if (state.filterRepoIds.length > 0 && !state.filterRepoIds.includes(importedRepoId)) {
-    state.setFilterRepoIds([])
+    state.setFilterRepoIds([...state.filterRepoIds, importedRepoId])
   }
   if (state.showActiveOnly) {
     state.setShowActiveOnly(false)

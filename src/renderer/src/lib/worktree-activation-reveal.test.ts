@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { activateAndRevealWorktree } from './worktree-activation'
 import { registerWorktreeActivationReset } from './worktree-activation-test-harness'
 import { useAppStore } from '@/store'
+import {
+  makeCreatedAgentWorktree,
+  seedEmptyActivatableWorktree
+} from './worktree-activation-created-agent-test-state'
 
 registerWorktreeActivationReset()
 
@@ -81,5 +85,19 @@ describe('activateAndRevealWorktree', () => {
     expect(revealWorktreeInSidebar).toHaveBeenCalledWith('wt-1', {
       executionHostId: 'ssh:box'
     })
+  })
+
+  it('preserves existing project filters and appends the activated worktree repo id (#20796)', () => {
+    const worktree = makeCreatedAgentWorktree()
+    seedEmptyActivatableWorktree(worktree)
+    const setFilterRepoIds = vi.fn()
+    useAppStore.setState({
+      filterRepoIds: ['repo-old-1', 'repo-old-2'],
+      setFilterRepoIds
+    })
+
+    activateAndRevealWorktree(worktree.id)
+
+    expect(setFilterRepoIds).toHaveBeenCalledWith(['repo-old-1', 'repo-old-2', worktree.repoId])
   })
 })

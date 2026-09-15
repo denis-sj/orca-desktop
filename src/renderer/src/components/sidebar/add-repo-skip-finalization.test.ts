@@ -61,7 +61,7 @@ describe('finalizeImportedRepoAfterSkip', () => {
     finalizeImportedRepoAfterSkip(state, 'repo-new')
 
     expect(state.setActiveRepo).toHaveBeenCalledWith('repo-new')
-    expect(state.setFilterRepoIds).toHaveBeenCalledWith([])
+    expect(state.setFilterRepoIds).toHaveBeenCalledWith(['repo-old', 'repo-new'])
     expect(state.setShowActiveOnly).toHaveBeenCalledWith(false)
     expect(state.setHideDefaultBranchWorkspace).not.toHaveBeenCalled()
   })
@@ -140,8 +140,24 @@ describe('finalizeImportedRepoAfterSkip', () => {
     finalizeImportedRepoAfterSkip(state, 'repo-new')
 
     expect(state.setActiveRepo).toHaveBeenCalledWith('repo-new')
-    expect(state.setFilterRepoIds).toHaveBeenCalledWith([])
+    expect(state.setFilterRepoIds).toHaveBeenCalledWith(['repo-old', 'repo-new'])
     expect(state.setShowActiveOnly).toHaveBeenCalledWith(false)
     expect(state.setHideDefaultBranchWorkspace).not.toHaveBeenCalled()
+  })
+
+  it('preserves existing project filters and appends the imported repo when filtered (#20796)', () => {
+    const state = makeState({
+      activeRepoId: 'repo-1',
+      filterRepoIds: ['repo-1', 'repo-2'],
+      showActiveOnly: false,
+      hideDefaultBranchWorkspace: false,
+      worktreesByRepo: {
+        'repo-3': [makeWorktree({ id: 'repo-3::/repo/main', repoId: 'repo-3' })]
+      }
+    })
+
+    finalizeImportedRepoAfterSkip(state, 'repo-3')
+
+    expect(state.setFilterRepoIds).toHaveBeenCalledWith(['repo-1', 'repo-2', 'repo-3'])
   })
 })
