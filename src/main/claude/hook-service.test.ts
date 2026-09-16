@@ -58,11 +58,12 @@ describe('getWindowsManagedLifecycleHook', () => {
     const hook = getWindowsManagedLifecycleHook(SAFE_SCRIPT_PATH, { gitBashAvailable: true })
 
     expect(hook.args).toBeUndefined()
-    expect(hook.command).toBe('C:/Users/alice/.orca/agent-hooks/claude-hook.cmd || echo {}')
+    expect(hook.command).toBe('. C:/Users/alice/.orca/agent-hooks/claude-hook.sh || echo {}')
     expect(hook.command).not.toMatch(/powershell|-EncodedCommand|conhost/i)
     // Why: Git Bash/MSYS mangles backslash paths and rewrites slash-prefixed switches.
     expect(hook.command).not.toMatch(/\\/)
     expect(hook.command).not.toMatch(/ \/[a-zA-Z]+( |$)/)
+    expect(isClaudeManagedCommand(hook.command)).toBe(true)
   })
 
   it('falls back to the encoded launcher when the profile path is not cmd-safe', () => {
@@ -463,7 +464,8 @@ describe('ClaudeHookService.install', () => {
           readFileSync(join(tmpHome, '.claude', 'settings.json'), 'utf-8')
         ) as { hooks: Record<string, { hooks: TestHook[] }[]> }
 
-        const expected = `${scriptPath.replaceAll('\\', '/')} || echo {}`
+        const shScriptPath = scriptPath.replace(/\.cmd$/i, '.sh').replaceAll('\\', '/')
+        const expected = `. ${shScriptPath} || echo {}`
         for (const { eventName } of CLAUDE_EVENTS) {
           const hook = settings.hooks[eventName]?.[0]?.hooks?.[0]
           expect(hook?.args, eventName).toBeUndefined()
@@ -562,9 +564,8 @@ describe('ClaudeHookService.install', () => {
           hooks: Record<string, { hooks: TestHook[] }[]>
         }
         expect(JSON.stringify(settings.hooks)).not.toContain('someone-else')
-        expect(settings.hooks.PreToolUse[0].hooks[0].command).toBe(
-          `${scriptPath.replaceAll('\\', '/')} || echo {}`
-        )
+        const shScriptPath = scriptPath.replace(/\.cmd$/i, '.sh').replaceAll('\\', '/')
+        expect(settings.hooks.PreToolUse[0].hooks[0].command).toBe(`. ${shScriptPath} || echo {}`)
         expect(new ClaudeHookService().getStatus().state).toBe('installed')
       } finally {
         vi.unstubAllEnvs()

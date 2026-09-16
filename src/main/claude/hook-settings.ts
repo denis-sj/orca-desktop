@@ -14,7 +14,7 @@ import {
   type HooksConfig
 } from '../agent-hooks/installer-utils'
 import { wrapRuntimeHomeHookCommand } from '../agent-hooks/runtime-home-hook-command'
-import { wrapWindowsDirectCmdHookCommand } from '../agent-hooks/windows-direct-cmd-hook-command'
+import { wrapWindowsDirectShHookCommand } from '../agent-hooks/windows-direct-cmd-hook-command'
 import { isGitBashAvailable } from '../git-bash'
 
 export type ClaudeCompatibleHookSettings = {
@@ -171,16 +171,17 @@ export function getWindowsManagedLifecycleHook(
   scriptPath: string,
   options: WindowsManagedLifecycleHookOptions = {}
 ): HookCommandConfig {
-  // Why (#18875): the encoded launcher cost a PowerShell start-up per hook event. Take the direct
-  // path only where the host can parse `||` — Git Bash can, Windows PowerShell 5.1 cannot.
-  const directCommand =
-    (options.gitBashAvailable ?? isGitBashAvailable())
-      ? wrapWindowsDirectCmdHookCommand(scriptPath)
-      : null
-  if (directCommand) {
-    return { type: 'command', command: directCommand, timeout: MANAGED_HOOK_TIMEOUT_SECONDS }
+  // Why (#18875, #20913): the encoded launcher cost a PowerShell start-up per hook event. Under Git Bash,
+  // source the POSIX sh script directly to avoid spawning cmd.exe (and running cmd AutoRun scripts).
+  if (options.gitBashAvailable ?? isGitBashAvailable()) {
+    const shScriptPath = scriptPath.replace(/\.cmd$/i, '.sh')
+    const directCommand = wrapWindowsDirectShHookCommand(shScriptPath)
+    if (directCommand) {
+      return { type: 'command', command: directCommand, timeout: MANAGED_HOOK_TIMEOUT_SECONDS }
+    }
   }
-  const scriptFileName = win32.basename(scriptPath)
+  const cmdScriptPath = scriptPath.replace(/\.sh$/i, '.cmd')
+  const scriptFileName = win32.basename(cmdScriptPath)
   // Why: runtime profile resolution keeps the managed entry portable across users (STA-3348).
   const quotedRelativePath = quotePowerShellString(`.orca\\agent-hooks\\${scriptFileName}`)
   // Why: compat consumers require neutral JSON even when the managed script is missing (#14818).

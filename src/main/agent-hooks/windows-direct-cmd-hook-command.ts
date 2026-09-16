@@ -28,3 +28,19 @@ export function wrapWindowsDirectCmdHookCommand(scriptPath: string): string | nu
   // Stderr stays unredirected: `2>nul` writes a literal `nul` file into the cwd under MSYS.
   return `${invocation} || echo {}`
 }
+
+/**
+ * Direct launcher for a managed Windows `.sh` hook under Git Bash (#20913).
+ *
+ * Sources the script directly in Git Bash to avoid spawning another shell process,
+ * and falls back to neutral JSON when the script is missing.
+ *
+ * Returns null when the caller must keep the encoded launcher: a path either shell would mangle.
+ */
+export function wrapWindowsDirectShHookCommand(scriptPath: string): string | null {
+  if (!WINDOWS_CMD_SAFE_PATH.test(scriptPath) || !WINDOWS_DRIVE_LETTER_PATH.test(scriptPath)) {
+    return null
+  }
+  const invocation = scriptPath.replaceAll('\\', '/')
+  return `. ${invocation} || echo {}`
+}

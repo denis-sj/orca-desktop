@@ -9,7 +9,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { removeTreeSync } from '../../shared/windows-transient-lock-removal'
 import { WINDOWS_CMD_SAFE_PATH } from './installer-utils'
-import { wrapWindowsDirectCmdHookCommand } from './windows-direct-cmd-hook-command'
+import {
+  wrapWindowsDirectCmdHookCommand,
+  wrapWindowsDirectShHookCommand
+} from './windows-direct-cmd-hook-command'
 import { findGitBash } from './windows-git-bash-path.test-fixture'
 
 const SAFE_PATH = 'C:\\Users\\alice\\.orca\\agent-hooks\\claude-hook.cmd'
@@ -49,6 +52,41 @@ describe('wrapWindowsDirectCmdHookCommand', () => {
       '\\\\server\\share\\alice\\.orca\\agent-hooks\\claude-hook.cmd'
     ]) {
       expect(wrapWindowsDirectCmdHookCommand(path), path).toBeNull()
+    }
+  })
+})
+
+const SAFE_SH_PATH = 'C:\\Users\\alice\\.orca\\agent-hooks\\claude-hook.sh'
+
+describe('wrapWindowsDirectShHookCommand', () => {
+  it('sources the script directly with forward slashes and a neutral-JSON fallback (#20913)', () => {
+    expect(wrapWindowsDirectShHookCommand(SAFE_SH_PATH)).toBe(
+      '. C:/Users/alice/.orca/agent-hooks/claude-hook.sh || echo {}'
+    )
+  })
+
+  it('spells nothing either shell would rewrite or reinterpret', () => {
+    const command = wrapWindowsDirectShHookCommand(SAFE_SH_PATH)!
+
+    expect(command).not.toMatch(/ \/[a-zA-Z]+( |$)/)
+    expect(command).not.toMatch(/\\/)
+    expect(command).not.toMatch(/["']/)
+    expect(command).not.toMatch(/powershell|cmd\.exe|conhost/i)
+    expect(command).not.toContain('2>')
+  })
+
+  it('declines any path the shells cannot carry bare', () => {
+    for (const path of [
+      'C:\\Users\\Bob Smith\\.orca\\agent-hooks\\claude-hook.sh',
+      'C:\\Users\\%name%\\.orca\\agent-hooks\\claude-hook.sh',
+      'C:\\Users\\a^b\\.orca\\agent-hooks\\claude-hook.sh',
+      'C:\\Users\\a&b\\.orca\\agent-hooks\\claude-hook.sh',
+      'C:\\Users\\a(b)\\.orca\\agent-hooks\\claude-hook.sh',
+      'C:\\Users\\rené\\.orca\\agent-hooks\\claude-hook.sh',
+      '/home/alice/.orca/agent-hooks/claude-hook.sh',
+      '\\\\server\\share\\alice\\.orca\\agent-hooks\\claude-hook.sh'
+    ]) {
+      expect(wrapWindowsDirectShHookCommand(path), path).toBeNull()
     }
   })
 })
@@ -138,6 +176,40 @@ describe.skipIf(process.platform !== 'win32')('direct hook command, run by both 
     withTempDir((dir, _scriptPath, command) => {
       runInBash(command, dir)
       expect(readdirSync(dir)).not.toContain('nul')
+    })
+  })
+
+  function withTempDirSh(run: (dir: string, scriptPath: string, command: string) => void): void {
+    const dir = mkdtempSync(join(tmpdir(), 'orca-direct-sh-hook-'))
+    try {
+      const scriptPath = join(dir, 'claude-hook.sh')
+      const command = wrapWindowsDirectShHookCommand(scriptPath)
+      expect(command, 'precondition: temp path must be cmd-safe').not.toBeNull()
+      run(dir, scriptPath, command!)
+    } finally {
+      removeTreeSync(dir)
+    }
+  }
+
+  it.skipIf(!canRunLive)('answers {} and exit 0 in bash when the sh script exists', () => {
+    withTempDirSh((dir, scriptPath, command) => {
+      writeFileSync(
+        scriptPath,
+        '#!/bin/sh\nprintf "{}\\n"\nreturn 0 2>/dev/null || exit 0\n',
+        'utf8'
+      )
+      const result = runInBash(command, dir)
+      expect(result.stdout.trim()).toBe('{}')
+      expect(result.status).toBe(0)
+    })
+  })
+
+  it.skipIf(!canRunLive)('still answers {} and exit 0 in bash when the sh script is gone', () => {
+    withTempDirSh((dir, scriptPath, command) => {
+      expect(existsSync(scriptPath)).toBe(false)
+      const result = runInBash(command, dir)
+      expect(result.stdout.trim()).toBe('{}')
+      expect(result.status).toBe(0)
     })
   })
 })
