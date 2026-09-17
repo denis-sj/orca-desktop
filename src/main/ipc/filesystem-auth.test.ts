@@ -388,6 +388,75 @@ describe('filesystem-auth path containment', () => {
     )
   })
 
+  it('allows Korean path descendants across NFC and NFD Unicode normalizations (#21172)', () => {
+    const rootNfc = resolve('/workspace/테스트프로젝트'.normalize('NFC'))
+    const childNfd = resolve('/workspace/테스트프로젝트'.normalize('NFD'), 'test.txt')
+    const rootNfd = resolve('/workspace/테스트프로젝트'.normalize('NFD'))
+    const childNfc = resolve('/workspace/테스트프로젝트'.normalize('NFC'), 'test.txt')
+
+    expect(isDescendantOrEqual(childNfd, rootNfc)).toBe(true)
+    expect(isDescendantOrEqual(childNfc, rootNfd)).toBe(true)
+    expect(isDescendantOrEqual(childNfc, rootNfc)).toBe(true)
+    expect(isDescendantOrEqual(childNfd, rootNfd)).toBe(true)
+  })
+
+  it('matches root and target directory equality across NFC and NFD (#21172)', () => {
+    const rootNfc = resolve('/workspace/테스트프로젝트'.normalize('NFC'))
+    const rootNfd = resolve('/workspace/테스트프로젝트'.normalize('NFD'))
+
+    expect(rootNfc).not.toBe(rootNfd)
+    expect(isDescendantOrEqual(rootNfd, rootNfc)).toBe(true)
+    expect(isDescendantOrEqual(rootNfc, rootNfd)).toBe(true)
+  })
+
+  it('strictly rejects directory traversal attempts containing Korean characters (#21172)', () => {
+    const root = resolve('/workspace/테스트프로젝트'.normalize('NFC'))
+    const outside = resolve('/workspace/테스트프로젝트'.normalize('NFD'), '../다른프로젝트/file.ts')
+    const prefixCollision = resolve('/workspace/테스트프로젝트2/file.ts')
+
+    expect(isDescendantOrEqual(outside, root)).toBe(false)
+    expect(isDescendantOrEqual(prefixCollision, root)).toBe(false)
+    expect(() => validateGitRelativeFilePath(root, '../다른프로젝트/file.ts')).toThrow(
+      'Access denied: git file path escapes the selected worktree'
+    )
+  })
+
+  it('authorizes Korean paths across NFC and NFD in resolveAuthorizedPath (#21172)', async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), 'orca-auth-korean-'))
+    try {
+      const folderName = '테스트프로젝트'
+      const folderPath = join(tempRoot, folderName.normalize('NFC'))
+      await mkdir(folderPath, { recursive: true })
+      const projectGroup = makeProjectGroup({ parentPath: folderPath })
+      const folderWorkspace = makeFolderWorkspace({ folderPath, projectGroupId: projectGroup.id })
+      const store = makeStore([], {
+        projectGroups: [projectGroup],
+        folderWorkspaces: [folderWorkspace]
+      })
+
+      const targetPathNfd = join(tempRoot, folderName.normalize('NFD'), 'test.txt')
+      const resolved = await resolveAuthorizedPath(targetPathNfd, store)
+      expect(resolved.normalize('NFC')).toBe(
+        join(await realpath(folderPath), 'test.txt').normalize('NFC')
+      )
+
+      const folderPathNfd = join(tempRoot, folderName.normalize('NFD'))
+      const storeWithNfd = makeStore([], {
+        projectGroups: [makeProjectGroup({ parentPath: folderPathNfd })],
+        folderWorkspaces: [
+          makeFolderWorkspace({ folderPath: folderPathNfd, projectGroupId: 'group-1' })
+        ]
+      })
+      const targetPathNfc = join(tempRoot, folderName.normalize('NFC'), 'test.txt')
+      const resolvedNfc = await resolveAuthorizedPath(targetPathNfc, storeWithNfd)
+      expect(resolvedNfc.normalize('NFC')).toBe(
+        join(await realpath(folderPath), 'test.txt').normalize('NFC')
+      )
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  })
+
   it('accepts Windows descendants when drive and root casing differ', async () => {
     vi.resetModules()
     vi.doMock('../repo-worktrees', () => ({

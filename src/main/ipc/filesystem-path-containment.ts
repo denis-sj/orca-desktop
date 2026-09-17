@@ -6,10 +6,13 @@ import { realpath } from 'node:fs/promises'
  * Uses relative() so it works with both `/` (Unix) and `\` (Windows) separators.
  */
 export function isDescendantOrEqual(resolvedTarget: string, resolvedBase: string): boolean {
-  if (resolvedTarget === resolvedBase) {
+  // Why: macOS realpath returns NFD decomposed Unicode while IPC/UI inputs provide NFC precomposed Unicode.
+  const normalizedTarget = resolvedTarget.normalize('NFC')
+  const normalizedBase = resolvedBase.normalize('NFC')
+  if (normalizedTarget === normalizedBase) {
     return true
   }
-  const rel = relative(resolvedBase, resolvedTarget)
+  const rel = relative(normalizedBase, normalizedTarget)
   // Security: reject "..", "../…" or an absolute rel — on Windows relative() returns absolute across drives, which would bypass drive-traversal checks.
   // Use isAbsolute, not rejoin+compare: Windows path.relative() ignores drive/root casing, so rejoining would deny valid c:\repo under C:\Repo.
   return rel !== '' && !(rel === '..' || rel.startsWith(`..${sep}`)) && !isAbsolute(rel)
@@ -64,7 +67,10 @@ export function validateGitRelativeFilePath(worktreePath: string, filePath: stri
     throw new Error('Access denied: git file path escapes the selected worktree')
   }
 
-  const normalizedRelativePath = relative(worktreePath, resolvedFilePath)
+  const normalizedRelativePath = relative(
+    worktreePath.normalize('NFC'),
+    resolvedFilePath.normalize('NFC')
+  )
   if (!normalizedRelativePath) {
     throw new Error('Access denied: invalid git file path')
   }

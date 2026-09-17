@@ -529,6 +529,14 @@ describe('areWorktreePathsEqual', () => {
       )
     ).toBe(true)
   })
+
+  it('treats NFC and NFD Unicode representations as the same path', () => {
+    const nfcPath = '/repos/테스트프로젝트'.normalize('NFC')
+    const nfdPath = '/repos/테스트프로젝트'.normalize('NFD')
+    expect(nfcPath).not.toBe(nfdPath)
+    expect(areWorktreePathsEqual(nfcPath, nfdPath, 'darwin')).toBe(true)
+    expect(areWorktreePathsEqual(nfcPath, nfdPath, 'linux')).toBe(true)
+  })
 })
 
 describe('shouldSetDisplayName', () => {

@@ -107,7 +107,7 @@ function normalizePosixWorktreePathForComparison(
   pathValue: string,
   platform: NodeJS.Platform
 ): string {
-  const normalized = posix.normalize(posix.resolve(pathValue))
+  const normalized = posix.normalize(posix.resolve(pathValue)).normalize('NFC')
   if (platform !== 'darwin') {
     return normalized
   }
